@@ -1,0 +1,497 @@
+/* ═══════════════════════════════════════════════════════════
+   LOBBY — Estilos completos
+   ═══════════════════════════════════════════════════════════ */
+
+#lb-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(ellipse at 20% 80%, rgba(14, 40, 120, 0.55) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 20%, rgba(120, 14, 40, 0.45) 0%, transparent 55%),
+    linear-gradient(160deg, #060b1a 0%, #0b1428 50%, #060b1a 100%);
+  transition: opacity 0.4s ease;
+  overflow-y: auto;
+}
+
+/* Partículas de fondo animadas */
+#lb-overlay::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 15% 25%, rgba(255,255,255,0.35) 0%, transparent 100%),
+    radial-gradient(1px 1px at 45% 65%, rgba(255,255,255,0.25) 0%, transparent 100%),
+    radial-gradient(1px 1px at 75% 35%, rgba(255,255,255,0.30) 0%, transparent 100%),
+    radial-gradient(1px 1px at 85% 75%, rgba(255,255,255,0.20) 0%, transparent 100%),
+    radial-gradient(1px 1px at 30% 85%, rgba(255,255,255,0.28) 0%, transparent 100%),
+    radial-gradient(1px 1px at 60% 15%, rgba(255,255,255,0.22) 0%, transparent 100%),
+    radial-gradient(1px 1px at 92% 50%, rgba(255,255,255,0.18) 0%, transparent 100%),
+    radial-gradient(1px 1px at 8%  50%, rgba(255,255,255,0.18) 0%, transparent 100%);
+  pointer-events: none;
+  animation: lb-stars 8s linear infinite alternate;
+}
+
+@keyframes lb-stars {
+  from { opacity: 0.6; }
+  to   { opacity: 1.0; }
+}
+
+/* ── Pantalla base ─────────────────────────────────────── */
+.lb-screen {
+  width: 100%;
+  max-width: 680px;
+  padding: 32px 28px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  animation: lb-fadein 0.35s ease both;
+  position: relative;
+}
+
+@keyframes lb-fadein {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Logo ──────────────────────────────────────────────── */
+.lb-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.lb-logo-text {
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(52px, 12vw, 88px);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: #fff;
+  text-shadow:
+    0 0 30px rgba(80, 160, 255, 0.7),
+    0 0 70px rgba(80, 160, 255, 0.3),
+    0 4px 0 #0a1830,
+    0 8px 40px rgba(0,0,0,0.8);
+  line-height: 1;
+}
+
+.lb-logo-accent {
+  color: #e10600;
+  text-shadow:
+    0 0 30px rgba(225, 6, 0, 0.8),
+    0 0 70px rgba(225, 6, 0, 0.4),
+    0 4px 0 #300;
+}
+
+.lb-logo-sub {
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(9px, 1.8vw, 13px);
+  font-weight: 700;
+  letter-spacing: 0.38em;
+  color: rgba(160, 190, 255, 0.6);
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+/* ── Nombre ────────────────────────────────────────────── */
+.lb-name-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 28px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.lb-label {
+  font-family: 'Orbitron', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  color: rgba(160, 190, 255, 0.65);
+  text-transform: uppercase;
+}
+
+.lb-input {
+  width: 100%;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 15px;
+  color: #e8eefc;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.lb-input:focus {
+  border-color: rgba(80, 160, 255, 0.6);
+  box-shadow: 0 0 0 3px rgba(80, 160, 255, 0.12);
+}
+
+.lb-code-input {
+  font-family: 'Orbitron', monospace;
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  max-width: 340px;
+}
+
+/* ── Sección título ────────────────────────────────────── */
+.lb-section-title {
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(10px, 1.6vw, 12px);
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  color: rgba(160, 190, 255, 0.55);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  margin-top: 4px;
+  width: 100%;
+  text-align: center;
+}
+
+/* ── Tarjetas de autos ─────────────────────────────────── */
+.lb-cars {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 28px;
+}
+
+@media (max-width: 600px) {
+  .lb-cars { grid-template-columns: repeat(2, 1fr); }
+}
+
+.lb-car-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  border-radius: 12px;
+  padding: 10px 6px 12px;
+  border: 2px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+  transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s, background 0.2s;
+  user-select: none;
+}
+
+.lb-car-card:hover {
+  border-color: rgba(255,255,255,0.22);
+  background: rgba(255,255,255,0.06);
+  transform: translateY(-3px);
+}
+
+.lb-car-card.selected {
+  border-color: rgba(255,255,255,0.55);
+  background: rgba(255,255,255,0.09);
+  box-shadow: 0 0 20px rgba(255,255,255,0.08), 0 4px 20px rgba(0,0,0,0.4);
+  transform: translateY(-4px);
+}
+
+.lb-car-preview {
+  width: 100%;
+  aspect-ratio: 2 / 1;
+  border-radius: 8px;
+  border: 1px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: filter 0.2s;
+}
+
+.lb-car-card.selected .lb-car-preview {
+  filter: brightness(1.15);
+}
+
+.lb-car-svg {
+  width: 90%;
+  height: 90%;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
+}
+
+.lb-car-name {
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(8px, 1.4vw, 10px);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+/* ── Botones de acción ─────────────────────────────────── */
+.lb-actions {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.lb-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 24px;
+  border-radius: 10px;
+  border: none;
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(10px, 1.6vw, 12px);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.2s, filter 0.15s;
+  white-space: nowrap;
+}
+
+.lb-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  filter: brightness(1.12);
+}
+
+.lb-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.lb-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.lb-btn-icon {
+  font-size: 16px;
+}
+
+.lb-btn-solo {
+  background: linear-gradient(135deg, #1a2a4a, #243560);
+  color: #a8c8ff;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08);
+  border: 1px solid rgba(80,160,255,0.2);
+}
+
+.lb-btn-host {
+  background: linear-gradient(135deg, #1a3a1a, #1e4a1e);
+  color: #88ee88;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08);
+  border: 1px solid rgba(80,220,80,0.25);
+}
+
+.lb-btn-join {
+  background: linear-gradient(135deg, #3a1a1a, #4a1e1e);
+  color: #ee8888;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08);
+  border: 1px solid rgba(220,80,80,0.25);
+}
+
+.lb-btn-start {
+  background: linear-gradient(135deg, #e10600, #c00400);
+  color: #fff;
+  box-shadow: 0 4px 24px rgba(225,6,0,0.45), inset 0 1px 0 rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,80,60,0.4);
+  font-size: clamp(11px, 1.8vw, 14px);
+  padding: 15px 36px;
+  margin-top: 24px;
+  width: 100%;
+  max-width: 320px;
+  justify-content: center;
+}
+
+/* ── Código de sala ────────────────────────────────────── */
+.lb-code-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 14px;
+  padding: 20px 32px;
+  margin-bottom: 12px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.lb-code-label {
+  font-family: 'Orbitron', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  color: rgba(160, 190, 255, 0.55);
+  text-transform: uppercase;
+}
+
+.lb-code-value {
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(11px, 2vw, 14px);
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  color: #88ddff;
+  text-shadow: 0 0 16px rgba(80,200,255,0.5);
+  word-break: break-all;
+  text-align: center;
+  max-width: 340px;
+}
+
+.lb-copy-btn {
+  background: rgba(80,160,255,0.12);
+  border: 1px solid rgba(80,160,255,0.3);
+  border-radius: 6px;
+  color: #88c8ff;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 12px;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.lb-copy-btn:hover {
+  background: rgba(80,160,255,0.22);
+}
+
+/* ── Lista de jugadores ────────────────────────────────── */
+.lb-player-list {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 60px;
+}
+
+.lb-player-row {
+  display: grid;
+  grid-template-columns: 14px 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  padding: 10px 14px;
+  animation: lb-fadein 0.25s ease both;
+}
+
+.lb-player-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.lb-player-name {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #e8eefc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lb-player-car {
+  font-family: 'Orbitron', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: rgba(160,190,255,0.55);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.lb-player-ping {
+  font-family: 'Orbitron', monospace;
+  font-size: 9px;
+  color: rgba(120,220,120,0.7);
+  white-space: nowrap;
+}
+
+.lb-loading {
+  grid-template-columns: 1fr;
+  color: rgba(160,190,255,0.45);
+  font-size: 13px;
+  text-align: center;
+  font-style: italic;
+}
+
+/* ── Textos informativos ───────────────────────────────── */
+.lb-info-text {
+  font-size: 13px;
+  color: rgba(160, 190, 255, 0.6);
+  text-align: center;
+  line-height: 1.5;
+  max-width: 400px;
+  margin-bottom: 8px;
+}
+
+.lb-status-text {
+  font-size: 12px;
+  color: rgba(255, 160, 80, 0.8);
+  text-align: center;
+  margin-top: 8px;
+  min-height: 18px;
+}
+
+/* ── Botón volver ──────────────────────────────────────── */
+.lb-back {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  color: rgba(160,190,255,0.7);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 12px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.lb-back:hover {
+  background: rgba(255,255,255,0.1);
+  color: #e8eefc;
+}
+
+/* ── Spinner ───────────────────────────────────────────── */
+.lb-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(80,160,255,0.15);
+  border-top-color: rgba(80,160,255,0.8);
+  border-radius: 50%;
+  animation: lb-spin 0.8s linear infinite;
+  margin: 16px auto;
+}
+
+@keyframes lb-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Toast de error ────────────────────────────────────── */
+.lb-error-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(180, 20, 10, 0.92);
+  border: 1px solid rgba(255,80,60,0.5);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 13px;
+  padding: 10px 20px;
+  z-index: 200;
+  backdrop-filter: blur(8px);
+  animation: lb-fadein 0.25s ease both;
+  max-width: 90vw;
+  text-align: center;
+}

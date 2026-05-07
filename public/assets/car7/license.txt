@@ -1,0 +1,8 @@
+Model Information:
+* title:	Volkswagen Golf GTI MK7
+* source:	https://sketchfab.com/3d-models/volkswagen-golf-gti-mk7-39c3aa1a2a1f43b3b225445a42c5f74c
+* author:	RPMRender (https://sketchfab.com/RPMRender)
+
+Model License:
+* license type:	SKETCHFAB Standard (https://sketchfab.com/licenses)
+* requirements:	Under basic restrictions, use worldwide, on all types of media, commercially or not, and in all types of derivative works

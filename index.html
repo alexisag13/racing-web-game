@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RaceX — Multiplayer Racing</title>
+  </head>
+  <body>
+    <!-- ── LOBBY ─────────────────────────────────────────── -->
+    <div id="lb-overlay"></div>
+
+    <!-- ── JUEGO ─────────────────────────────────────────── -->
+    <div id="ui">
+      <!-- Cuenta atrás -->
+      <div id="countdown-overlay" class="countdown-overlay hidden">
+        <span id="countdown-text" class="countdown-text" data-n="3">3</span>
+      </div>
+
+      <!-- HUD principal -->
+      <div id="hud">
+        <div id="lap-bar-wrap"><div id="lap-bar-fill"></div></div>
+        <span id="hud-lap">Vueltas: 0</span>
+        <span id="hud-hint">WASD acelerar/frenar · 1=normal 2=arriba 3=izq 4=der</span>
+      </div>
+
+      <!-- Velocímetro -->
+      <div id="speedo-wrap">
+        <canvas id="speedo-canvas" width="220" height="220"></canvas>
+        <div id="speedo-center">
+          <div id="speedo-kmh">0</div>
+          <div id="speedo-unit">km/h</div>
+        </div>
+        <div id="speedo-gear">N</div>
+        <div id="speedo-rpm-wrap">
+          <div id="speedo-rpm-bar"></div>
+        </div>
+      </div>
+
+      <!-- Minimapa -->
+      <div id="minimap-wrap">
+        <canvas id="minimap-canvas" width="180" height="180"></canvas>
+      </div>
+
+      <div id="finish-overlay">
+        <div id="finish-title">¡META!</div>
+        <div id="finish-sub">Recarga la página para repetir</div>
+      </div>
+    </div>
+
+    <!-- Menú de pausa — fuera de #ui para no heredar pointer-events:none -->
+    <div id="pause-overlay" class="pause-overlay hidden">
+      <div class="pause-card">
+        <div class="pause-title">PAUSA</div>
+        <button class="pause-btn" id="pause-resume">▶ CONTINUAR</button>
+        <button class="pause-btn pause-btn-lobby" id="pause-lobby">⬅ VOLVER AL LOBBY</button>
+      </div>
+    </div>
+
+    <canvas id="renderCanvas"></canvas>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
