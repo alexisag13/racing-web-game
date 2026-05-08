@@ -8,11 +8,9 @@ import {
   MeshBuilder,
   PBRMaterial,
   Scene,
-  SceneLoader,
   ShadowGenerator,
   Vector3,
 } from "@babylonjs/core";
-import "@babylonjs/loaders/glTF";
 
 export function setupEnvironment(
   scene: Scene,
@@ -69,7 +67,6 @@ export function setupEnvironment(
   rim.specular  = new Color3(0.25, 0.25, 0.25);
 
   createMountains(scene);
-  loadTrees(scene);
   createClouds(scene);
 
   return { sun, shadows };
@@ -235,95 +232,5 @@ function createMountains(scene: Scene): void {
   if (farSnowMerged) farSnowMerged.material = matSnow;
 }
 
-function loadTrees(scene: Scene): void {
-  // OPTIMIZADO: ~80 árboles estratégicamente colocados (antes 200+)
-  const positions = [
-    // ══════════════════════════════════════════════════════════
-    // ZONA NORTE (recta principal) - Bosque visible
-    // ══════════════════════════════════════════════════════════
-    { x:  40, z: -270, s: 1.4 }, { x:  90, z: -260, s: 1.3 }, { x: 140, z: -250, s: 1.5 },
-    { x: 190, z: -240, s: 1.2 }, { x: 240, z: -230, s: 1.4 }, { x: 290, z: -220, s: 1.3 },
-    { x:  60, z: -300, s: 1.5 }, { x: 160, z: -290, s: 1.3 }, { x: 260, z: -280, s: 1.4 },
-    
-    // ══════════════════════════════════════════════════════════
-    // ZONA ESTE - Lateral
-    // ══════════════════════════════════════════════════════════
-    { x: 450, z: -180, s: 1.3 }, { x: 455, z: -100, s: 1.5 }, { x: 450, z:  -20, s: 1.2 },
-    { x: 445, z:   60, s: 1.4 }, { x: 440, z:  140, s: 1.3 }, { x: 435, z:  220, s: 1.5 },
-    { x: 475, z: -140, s: 1.4 }, { x: 470, z:  -60, s: 1.2 }, { x: 465, z:   20, s: 1.3 },
-    { x: 460, z:  100, s: 1.5 }, { x: 455, z:  180, s: 1.2 },
-    
-    // ══════════════════════════════════════════════════════════
-    // ZONA SUR - Bosque denso
-    // ══════════════════════════════════════════════════════════
-    { x: 280, z:  330, s: 1.4 }, { x: 220, z:  340, s: 1.3 }, { x: 160, z:  350, s: 1.5 },
-    { x: 100, z:  360, s: 1.2 }, { x:  40, z:  370, s: 1.4 }, { x: -20, z:  380, s: 1.3 },
-    { x: -80, z:  370, s: 1.5 }, { x:-140, z:  360, s: 1.2 }, { x:-200, z:  350, s: 1.4 },
-    { x:-260, z:  340, s: 1.3 }, { x:-300, z:  330, s: 1.5 },
-    { x: 240, z:  370, s: 1.3 }, { x: 120, z:  390, s: 1.4 }, { x:   0, z:  400, s: 1.2 },
-    { x:-120, z:  390, s: 1.5 }, { x:-240, z:  370, s: 1.3 },
-    
-    // ══════════════════════════════════════════════════════════
-    // ZONA OESTE - Lateral
-    // ══════════════════════════════════════════════════════════
-    { x:-455, z:  260, s: 1.5 }, { x:-450, z:  180, s: 1.2 }, { x:-455, z:  100, s: 1.4 },
-    { x:-450, z:   20, s: 1.3 }, { x:-455, z:  -60, s: 1.5 }, { x:-450, z: -140, s: 1.2 },
-    { x:-455, z: -220, s: 1.4 },
-    { x:-475, z:  220, s: 1.4 }, { x:-470, z:  140, s: 1.2 }, { x:-475, z:   60, s: 1.3 },
-    { x:-470, z:  -20, s: 1.5 }, { x:-475, z: -100, s: 1.2 }, { x:-470, z: -180, s: 1.4 },
-    
-    // ══════════════════════════════════════════════════════════
-    // INTERIOR DEL CIRCUITO - Grupos estratégicos
-    // ══════════════════════════════════════════════════════════
-    // Grupo noreste
-    { x: 190, z:  -75, s: 1.0 }, { x: 210, z:  -80, s: 1.1 }, { x: 230, z:   20, s: 1.0 },
-    { x: 250, z:   25, s: 0.9 }, { x: 270, z:   85, s: 1.1 }, { x: 250, z:  145, s: 1.0 },
-    
-    // Grupo sur interior
-    { x: 110, z:  185, s: 1.2 }, { x:  60, z:  220, s: 1.0 }, { x: -70, z:  185, s: 1.1 },
-    { x:-110, z:  145, s: 0.9 },
-    
-    // Grupo oeste interior
-    { x:-190, z:   85, s: 1.1 }, { x:-210, z:   20, s: 1.0 }, { x:-180, z:  -55, s: 1.2 },
-    { x:-150, z:  -95, s: 0.9 },
-    
-    // Grupo norte interior
-    { x: -70, z: -115, s: 1.0 }, { x:  60, z: -115, s: 1.1 },
-    
-    // ══════════════════════════════════════════════════════════
-    // RELLENO para densidad visual
-    // ══════════════════════════════════════════════════════════
-    { x: 120, z: -270, s: 1.2 }, { x: 350, z: -200, s: 1.3 }, { x: 370, z:   50, s: 1.1 },
-    { x: 320, z:  250, s: 1.4 }, { x: 150, z:  340, s: 1.2 }, { x: -110, z:  350, s: 1.3 },
-    { x:-280, z:  310, s: 1.2 }, { x:-380, z:  200, s: 1.4 }, { x:-390, z:    0, s: 1.1 },
-    { x:-380, z: -200, s: 1.3 }, { x:-150, z: -260, s: 1.2 },
-  ];
 
-  SceneLoader.ImportMesh("", "/assets/tree/", "scene.gltf", scene, (meshes) => {
-    if (!meshes.length) return;
-    const root = meshes[0]!;
-    root.scaling.setAll(0.008);
-    root.isVisible = false;
-    
-    for (let i = 0; i < positions.length; i++) {
-      const { x, z, s } = positions[i]!;
-      const inst = root.clone(`tree_${i}`, null);
-      if (!inst) continue;
-      inst.isVisible = true;
-      inst.position.set(x, 0, z);
-      inst.scaling.setAll(0.008 * s);
-      inst.rotation.y = Math.random() * Math.PI * 2;
-      
-      // Variación de color sutil
-      inst.getChildMeshes().forEach((mesh) => {
-        if (mesh.material && "albedoColor" in mesh.material) {
-          const mat = mesh.material as PBRMaterial;
-          const tint = 0.85 + Math.random() * 0.3;
-          if (mat.albedoColor) {
-            mat.albedoColor = mat.albedoColor.scale(tint);
-          }
-        }
-      });
-    }
-  });
-}
+

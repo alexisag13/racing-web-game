@@ -43,15 +43,16 @@ export class AudioManager {
   private currentGear = 0;  // 0=N, 1-6=marchas
 
   // Marchas: [velocidad mínima en m/s, velocidad máxima en m/s]
-  // 1ª: 0–60 km/h, 2ª: 60–100, 3ª: 100–140, 4ª: 140–190, 5ª: 190–240, 6ª: 240–320
+  // 1ª: 0–55 km/h, 2ª: 50–95, 3ª: 85–135, 4ª: 125–180, 5ª: 165–225, 6ª: 210–270, 7ª: 255–340
   private static readonly GEAR_RANGES: [number, number][] = [
     [0,    0   ],  // N (neutral)
-    [0,    16.7],  // 1ª  0–60 km/h
-    [14.0, 27.8],  // 2ª  50–100 km/h
-    [24.0, 38.9],  // 3ª  86–140 km/h
-    [36.0, 52.8],  // 4ª  130–190 km/h
-    [48.0, 66.7],  // 5ª  173–240 km/h
-    [61.0, 88.9]   // 6ª  220–320 km/h
+    [0,    15.3],  // 1ª  0–55 km/h
+    [13.9, 26.4],  // 2ª  50–95 km/h
+    [23.6, 37.5],  // 3ª  85–135 km/h
+    [34.7, 50.0],  // 4ª  125–180 km/h
+    [45.8, 62.5],  // 5ª  165–225 km/h
+    [58.3, 75.0],  // 6ª  210–270 km/h
+    [70.8, 94.4]   // 7ª  255–340 km/h
   ];
 
   constructor() {
@@ -192,7 +193,7 @@ export class AudioManager {
     } else {
       const ranges = AudioManager.GEAR_RANGES;
       let g = Math.max(1, this.currentGear === 0 ? 1 : this.currentGear);
-      while (g < 6 && absSpeed > ranges[g]![1] * 0.88) g++;
+      while (g < 7 && absSpeed > ranges[g]![1] * 0.88) g++;
       while (g > 1 && absSpeed < ranges[g - 1]![1] * 0.70) g--;
       newGear = g;
     }
@@ -204,7 +205,7 @@ export class AudioManager {
     if (gearChanged) this.playGearShift(shiftUp);
 
     // ── RPM dentro de la marcha ───────────────────────────
-    const range = AudioManager.GEAR_RANGES[Math.max(1, newGear)]!;
+    const range = AudioManager.GEAR_RANGES[Math.max(1, Math.min(7, newGear))]!;
     const rangeMin = range[0], rangeMax = range[1];
     const rpmInGear = rangeMax > rangeMin
       ? Math.max(0, Math.min(1, (absSpeed - rangeMin) / (rangeMax - rangeMin)))

@@ -156,7 +156,6 @@ export class RaceTrack {
     this.buildEdgeLines();
     this.buildCenterDashes();
     this.buildCurbs();
-    this.buildGrandstands(); // Gradas en ubicaciones estratégicas
     this.buildMarkings();
   }
 
@@ -250,70 +249,35 @@ export class RaceTrack {
     ground.receiveShadows = true;
   }
 
-  /** Genera textura de césped MEJORADA Y VISIBLE */
+  /** Genera textura de césped simple y rápida */
   private generateRealisticGrassTexture(): Texture {
-    const TS = 512; // Resolución moderada para rendimiento
+    const TS = 256; // Resolución reducida — suficiente para césped
     const tex = new DynamicTexture("grassTex", { width: TS, height: TS }, this.scene, false);
     tex.wrapU = Texture.WRAP_ADDRESSMODE;
     tex.wrapV = Texture.WRAP_ADDRESSMODE;
     const ctx = tex.getContext() as CanvasRenderingContext2D;
 
-    // Base verde natural con variación
-    const baseColors = [
-      "#2d6b22", "#2a6520", "#2f7024", "#286018", "#316c26",
-      "#2b6721", "#2e6923", "#296319", "#306b25", "#2c6822"
-    ];
+    // Base verde sólida
+    ctx.fillStyle = "#2d6b22";
+    ctx.fillRect(0, 0, TS, TS);
 
-    // Llenar con parches
-    for (let y = 0; y < TS; y += 20) {
-      for (let x = 0; x < TS; x += 20) {
-        ctx.fillStyle = baseColors[Math.floor(Math.random() * baseColors.length)]!;
-        ctx.fillRect(x, y, 20, 20);
+    // Rayas de corte de césped
+    for (let y = 0; y < TS; y += 16) {
+      ctx.fillStyle = y % 32 === 0 ? "rgba(0,0,0,0.15)" : "rgba(255,255,255,0.08)";
+      ctx.fillRect(0, y, TS, 16);
+    }
+
+    // Variación de color en bloques (rápido, sin pixel-by-pixel)
+    const colors = ["#2a6520", "#2f7024", "#286018", "#316c26", "#2b6721"];
+    for (let y = 0; y < TS; y += 32) {
+      for (let x = 0; x < TS; x += 32) {
+        ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)]!;
+        ctx.globalAlpha = 0.3;
+        ctx.fillRect(x, y, 32, 32);
       }
     }
+    ctx.globalAlpha = 1.0;
 
-    // Rayas de corte de césped VISIBLES
-    for (let y = 0; y < TS; y += 12) {
-      const shade = y % 24 === 0 ? "rgba(0,0,0,0.18)" : "rgba(255,255,255,0.12)";
-      ctx.fillStyle = shade;
-      ctx.fillRect(0, y, TS, 12);
-    }
-
-    // Textura granular (briznas)
-    const imgData = ctx.getImageData(0, 0, TS, TS);
-    const d = imgData.data;
-    for (let i = 0; i < d.length; i += 4) {
-      const noise = (Math.random() * 25 - 12) | 0;
-      d[i]!     = Math.max(0, Math.min(255, d[i]!     + noise));
-      d[i + 1]! = Math.max(0, Math.min(255, d[i + 1]! + noise + 10));
-      d[i + 2]! = Math.max(0, Math.min(255, d[i + 2]! + (noise >> 1)));
-    }
-
-    // Manchas oscuras (sombras)
-    for (let k = 0; k < 40; k++) {
-      const px = Math.random() * TS;
-      const py = Math.random() * TS;
-      const r = 20 + Math.random() * 40;
-      const grad = ctx.createRadialGradient(px, py, 0, px, py, r);
-      grad.addColorStop(0, "rgba(0,0,0,0.20)");
-      grad.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = grad;
-      ctx.fillRect(px - r, py - r, r * 2, r * 2);
-    }
-
-    // Manchas claras (luz)
-    for (let k = 0; k < 25; k++) {
-      const px = Math.random() * TS;
-      const py = Math.random() * TS;
-      const r = 15 + Math.random() * 30;
-      const grad = ctx.createRadialGradient(px, py, 0, px, py, r);
-      grad.addColorStop(0, "rgba(180,220,140,0.15)");
-      grad.addColorStop(1, "rgba(180,220,140,0)");
-      ctx.fillStyle = grad;
-      ctx.fillRect(px - r, py - r, r * 2, r * 2);
-    }
-
-    ctx.putImageData(imgData, 0, 0);
     tex.update();
     return tex;
   }
@@ -391,343 +355,7 @@ export class RaceTrack {
     }
   }
 
-  /**
-   * Gradas (grandstands) MEJORADAS con más detalle
-   * Ajustadas a la pista nueva en ubicaciones estratégicas
-   */
-  private buildGrandstands(): void {
-    /**
-     * Ubicaciones estratégicas para gradas en la pista extendida:
-     * ZONA DE META: Múltiples gradas grandes (la zona más importante)
-     * Otras zonas: Gradas complementarias
-     */
-    
-    const grandstands = [
-      // ══════════════════════════════════════════════════════════
-      // ZONA DE META - MÚLTIPLES GRADAS GRANDES (la más importante)
-      // ══════════════════════════════════════════════════════════
-      
-      // Grada principal IZQUIERDA (la más grande)
-      { 
-        x: -45, z: -100, 
-        yaw: Math.PI * 0.5, // Mirando hacia la pista
-        width: 120, tiers: 15, tierHeight: 0.8, tierDepth: 1.2
-      },
-      
-      // Grada DERECHA de la meta
-      { 
-        x: 45, z: -100, 
-        yaw: Math.PI * 1.5, // Mirando hacia la pista desde el otro lado
-        width: 100, tiers: 12, tierHeight: 0.8, tierDepth: 1.2
-      },
-      
-      // Grada TRASERA de la zona de meta (detrás de la línea)
-      { 
-        x: 0, z: 30, 
-        yaw: Math.PI, // Mirando hacia la línea de meta
-        width: 90, tiers: 10, tierHeight: 0.8, tierDepth: 1.2
-      },
-      
-      // Grada LATERAL NORTE de la recta principal
-      { 
-        x: -50, z: -200, 
-        yaw: Math.PI * 0.5,
-        width: 80, tiers: 10, tierHeight: 0.8, tierDepth: 1.2
-      },
-      
-      // Grada LATERAL SUR de la recta principal
-      { 
-        x: 50, z: -200, 
-        yaw: Math.PI * 1.5,
-        width: 80, tiers: 10, tierHeight: 0.8, tierDepth: 1.2
-      },
-      
-      // ══════════════════════════════════════════════════════════
-      // OTRAS ZONAS DEL CIRCUITO
-      // ══════════════════════════════════════════════════════════
-      
-      // Grada ESTE - Curva rápida (exterior)
-      { 
-        x: 420, z: -320, 
-        yaw: Math.PI * 1.15,
-        width: 60, tiers: 8, tierHeight: 0.8, tierDepth: 1.2
-      },
-      
-      // Grada RECTA TRASERA NORTE
-      { 
-        x: 150, z: 210, 
-        yaw: Math.PI * 1.5,
-        width: 70, tiers: 10, tierHeight: 0.8, tierDepth: 1.2
-      },
-      
-      // Grada RECTA TRASERA SUR
-      { 
-        x: -150, z: 210, 
-        yaw: Math.PI * 1.5,
-        width: 70, tiers: 10, tierHeight: 0.8, tierDepth: 1.2
-      },
-      
-      // Grada OESTE - Sector técnico
-      { 
-        x: -430, z: -180, 
-        yaw: Math.PI * 0.25,
-        width: 55, tiers: 8, tierHeight: 0.8, tierDepth: 1.2
-      },
-    ];
 
-    for (const gs of grandstands) {
-      this.buildDetailedGrandstand(
-        new Vector3(gs.x, 0, gs.z),
-        gs.yaw,
-        gs.width,
-        gs.tiers,
-        gs.tierHeight,
-        gs.tierDepth
-      );
-    }
-  }
-
-  /**
-   * Construye una grada detallada con estructura realista
-   */
-  private buildDetailedGrandstand(
-    position: Vector3,
-    yaw: number,
-    width: number,
-    tiers: number,
-    tierHeight: number,
-    tierDepth: number
-  ): void {
-    const totalHeight = tiers * tierHeight;
-    const totalDepth = tiers * tierDepth;
-
-    // ══════════════════════════════════════════════════════════
-    // MATERIALES
-    // ══════════════════════════════════════════════════════════
-    
-    // Estructura metálica
-    const matSteel = new PBRMaterial(`steel_${position.x}`, this.scene);
-    matSteel.albedoColor = new Color3(0.70, 0.72, 0.75);
-    matSteel.metallic = 0.85;
-    matSteel.roughness = 0.35;
-
-    // Asientos ROJOS (más llamativos)
-    const matSeats = new PBRMaterial(`seats_${position.x}`, this.scene);
-    matSeats.albedoColor = new Color3(0.85, 0.10, 0.05); // ROJO BRILLANTE
-    matSeats.metallic = 0.0;
-    matSeats.roughness = 0.60;
-    matSeats.emissiveColor = new Color3(0.08, 0.01, 0.0); // Ligero brillo rojo
-
-    // Concreto
-    const matConcrete = new PBRMaterial(`concrete_${position.x}`, this.scene);
-    matConcrete.albedoColor = new Color3(0.55, 0.55, 0.58);
-    matConcrete.metallic = 0.0;
-    matConcrete.roughness = 0.90;
-
-    // Barandilla
-    const matRail = new PBRMaterial(`rail_${position.x}`, this.scene);
-    matRail.albedoColor = new Color3(0.85, 0.85, 0.88);
-    matRail.metallic = 0.75;
-    matRail.roughness = 0.25;
-
-    // ══════════════════════════════════════════════════════════
-    // ESTRUCTURA DE SOPORTE (columnas y vigas)
-    // ══════════════════════════════════════════════════════════
-    const numColumns = Math.floor(width / 6) + 1;
-    const columnMeshes: Mesh[] = [];
-    
-    for (let i = 0; i < numColumns; i++) {
-      const colX = (i / (numColumns - 1) - 0.5) * width;
-      
-      // Columna principal
-      const col = MeshBuilder.CreateBox(`col_${position.x}_${i}`, 
-        { width: 0.5, height: totalHeight, depth: 0.5 }, this.scene);
-      
-      const localPos = new Vector3(colX, totalHeight / 2, -totalDepth * 0.5);
-      const rotated = this.rotatePoint(localPos, yaw);
-      col.position.copyFrom(position.add(rotated));
-      col.rotation.y = yaw;
-      columnMeshes.push(col);
-      
-      // Vigas diagonales de soporte (cada 3 columnas)
-      if (i % 3 === 0 && i < numColumns - 1) {
-        const brace = MeshBuilder.CreateBox(`brace_${position.x}_${i}`, 
-          { width: 0.3, height: totalHeight * 0.7, depth: 0.3 }, this.scene);
-        
-        const bracePos = new Vector3(colX + 3, totalHeight * 0.35, -totalDepth * 0.25);
-        const braceRotated = this.rotatePoint(bracePos, yaw);
-        brace.position.copyFrom(position.add(braceRotated));
-        brace.rotation.y = yaw;
-        brace.rotation.z = Math.PI * 0.15; // Inclinación diagonal
-        columnMeshes.push(brace);
-      }
-    }
-    
-    // Merge columnas
-    const columnsMerged = Mesh.MergeMeshes(columnMeshes, true, true);
-    if (columnsMerged) {
-      columnsMerged.material = matSteel;
-      columnsMerged.receiveShadows = true;
-    }
-
-    // ══════════════════════════════════════════════════════════
-    // ESCALONES (tiers) - Base de concreto + asientos
-    // ══════════════════════════════════════════════════════════
-    const concreteMeshes: Mesh[] = [];
-    const seatMeshes: Mesh[] = [];
-    
-    for (let tier = 0; tier < tiers; tier++) {
-      const tierY = tier * tierHeight;
-      const tierZ = -tier * tierDepth;
-      
-      // Base de concreto del escalón
-      const concrete = MeshBuilder.CreateBox(`concrete_${position.x}_${tier}`, 
-        { width: width, height: tierHeight * 0.6, depth: tierDepth }, this.scene);
-      
-      const concretePos = new Vector3(0, tierY + tierHeight * 0.3, tierZ);
-      const concreteRotated = this.rotatePoint(concretePos, yaw);
-      concrete.position.copyFrom(position.add(concreteRotated));
-      concrete.rotation.y = yaw;
-      concreteMeshes.push(concrete);
-      
-      // Asientos individuales (simulados con boxes pequeños)
-      const numSeats = Math.floor(width / 0.6);
-      for (let s = 0; s < numSeats; s++) {
-        const seatX = (s / (numSeats - 1) - 0.5) * (width - 1);
-        
-        const seat = MeshBuilder.CreateBox(`seat_${position.x}_${tier}_${s}`, 
-          { width: 0.5, height: 0.4, depth: 0.5 }, this.scene);
-        
-        const seatPos = new Vector3(seatX, tierY + tierHeight * 0.8, tierZ + tierDepth * 0.25);
-        const seatRotated = this.rotatePoint(seatPos, yaw);
-        seat.position.copyFrom(position.add(seatRotated));
-        seat.rotation.y = yaw;
-        seatMeshes.push(seat);
-      }
-    }
-    
-    // Merge escalones
-    const concreteMerged = Mesh.MergeMeshes(concreteMeshes, true, true);
-    if (concreteMerged) {
-      concreteMerged.material = matConcrete;
-      concreteMerged.receiveShadows = true;
-    }
-    
-    const seatsMerged = Mesh.MergeMeshes(seatMeshes, true, true);
-    if (seatsMerged) {
-      seatsMerged.material = matSeats;
-      seatsMerged.receiveShadows = true;
-    }
-
-    // ══════════════════════════════════════════════════════════
-    // BARANDILLAS (en la parte superior y cada 4 filas)
-    // ══════════════════════════════════════════════════════════
-    const railMeshes: Mesh[] = [];
-    
-    for (let tier = 0; tier <= tiers; tier += 4) {
-      if (tier > tiers) tier = tiers; // Última fila
-      
-      const railY = tier * tierHeight;
-      const railZ = -tier * tierDepth;
-      
-      // Barandilla horizontal
-      const rail = MeshBuilder.CreateBox(`rail_${position.x}_${tier}`, 
-        { width: width, height: 0.15, depth: 0.08 }, this.scene);
-      
-      const railPos = new Vector3(0, railY + 1.0, railZ);
-      const railRotated = this.rotatePoint(railPos, yaw);
-      rail.position.copyFrom(position.add(railRotated));
-      rail.rotation.y = yaw;
-      railMeshes.push(rail);
-      
-      // Postes verticales cada 4 metros
-      const numPosts = Math.floor(width / 4) + 1;
-      for (let p = 0; p < numPosts; p++) {
-        const postX = (p / (numPosts - 1) - 0.5) * width;
-        
-        const post = MeshBuilder.CreateBox(`post_${position.x}_${tier}_${p}`, 
-          { width: 0.08, height: 1.0, depth: 0.08 }, this.scene);
-        
-        const postPos = new Vector3(postX, railY + 0.5, railZ);
-        const postRotated = this.rotatePoint(postPos, yaw);
-        post.position.copyFrom(position.add(postRotated));
-        post.rotation.y = yaw;
-        railMeshes.push(post);
-      }
-    }
-    
-    const railsMerged = Mesh.MergeMeshes(railMeshes, true, true);
-    if (railsMerged) {
-      railsMerged.material = matRail;
-      railsMerged.receiveShadows = true;
-    }
-
-    // ══════════════════════════════════════════════════════════
-    // TECHO (cubierta metálica)
-    // ══════════════════════════════════════════════════════════
-    const roofHeight = totalHeight + 3;
-    const roofDepth = totalDepth + 4;
-    
-    // Estructura del techo
-    const roof = MeshBuilder.CreateBox(`roof_${position.x}`, 
-      { width: width + 2, height: 0.25, depth: roofDepth }, this.scene);
-    
-    const roofPos = new Vector3(0, roofHeight, -totalDepth * 0.5);
-    const roofRotated = this.rotatePoint(roofPos, yaw);
-    roof.position.copyFrom(position.add(roofRotated));
-    roof.rotation.y = yaw;
-    roof.rotation.x = -Math.PI * 0.05; // Ligera inclinación
-    roof.material = matSteel;
-    roof.receiveShadows = true;
-    
-    // Soportes del techo (vigas verticales)
-    const roofSupportMeshes: Mesh[] = [];
-    for (let i = 0; i < 4; i++) {
-      const supportX = (i / 3 - 0.5) * width;
-      
-      const support = MeshBuilder.CreateBox(`roofsup_${position.x}_${i}`, 
-        { width: 0.4, height: 3, depth: 0.4 }, this.scene);
-      
-      const supPos = new Vector3(supportX, totalHeight + 1.5, -totalDepth - 1);
-      const supRotated = this.rotatePoint(supPos, yaw);
-      support.position.copyFrom(position.add(supRotated));
-      support.rotation.y = yaw;
-      roofSupportMeshes.push(support);
-    }
-    
-    const roofSupMerged = Mesh.MergeMeshes(roofSupportMeshes, true, true);
-    if (roofSupMerged) {
-      roofSupMerged.material = matSteel;
-      roofSupMerged.receiveShadows = true;
-    }
-
-    // ══════════════════════════════════════════════════════════
-    // DETALLES: Paneles publicitarios en la parte frontal
-    // ══════════════════════════════════════════════════════════
-    const adBoard = MeshBuilder.CreateBox(`adboard_${position.x}`, 
-      { width: width * 0.8, height: 2, depth: 0.1 }, this.scene);
-    
-    const adPos = new Vector3(0, 1, 0.5);
-    const adRotated = this.rotatePoint(adPos, yaw);
-    adBoard.position.copyFrom(position.add(adRotated));
-    adBoard.rotation.y = yaw;
-    
-    const matAd = new StandardMaterial(`ad_${position.x}`, this.scene);
-    matAd.diffuseColor = new Color3(0.95, 0.95, 0.95);
-    matAd.emissiveColor = new Color3(0.1, 0.1, 0.1);
-    adBoard.material = matAd;
-  }
-
-  /** Rota un punto alrededor del eje Y */
-  private rotatePoint(point: Vector3, yaw: number): Vector3 {
-    const cos = Math.cos(yaw);
-    const sin = Math.sin(yaw);
-    return new Vector3(
-      point.x * cos - point.z * sin,
-      point.y,
-      point.x * sin + point.z * cos
-    );
-  }
 
   private buildMarkings(): void {
     const f = this.getFrameAt(0);
@@ -735,32 +363,54 @@ export class RaceTrack {
     const origin = this.samples[0]!;
     
     // ══════════════════════════════════════════════════════════
-    // LÍNEA DE META - Cuadros de ajedrez grandes
+    // LÍNEA DE META - Cuadros de ajedrez alineados con la pista
     // ══════════════════════════════════════════════════════════
-    const COLS = 14, ROWS = 4, SQ = 3.2;
+    // Ancho total = halfWidth * 2 = 26 unidades
+    // Usamos 13 columnas × 2 unidades = 26 (exactamente el ancho de la pista)
+    const TRACK_W = this.halfWidth * 2;   // 26
+    const COLS    = 13;
+    const ROWS    = 3;
+    const SQ      = TRACK_W / COLS;       // ~2.0 — cuadros que llenan exactamente el ancho
     
     const matW = new StandardMaterial("sqW", this.scene);
-    matW.diffuseColor = new Color3(1.0, 1.0, 1.0);
-    matW.emissiveColor = new Color3(0.25, 0.25, 0.25);
+    matW.diffuseColor  = new Color3(1.0, 1.0, 1.0);
+    matW.emissiveColor = new Color3(0.20, 0.20, 0.20);
     
     const matB = new StandardMaterial("sqB", this.scene);
-    matB.diffuseColor = new Color3(0.02, 0.02, 0.02);
+    matB.diffuseColor  = new Color3(0.05, 0.05, 0.05);
     matB.emissiveColor = new Color3(0.0, 0.0, 0.0);
     
     const cos = Math.cos(yaw0), sin = Math.sin(yaw0);
+    const checkMeshes: Mesh[] = [];
+    const checkMatsW: Mesh[] = [];
+    const checkMatsB: Mesh[] = [];
     
-    // Cuadros de ajedrez
     for (let col = 0; col < COLS; col++) {
       for (let row = 0; row < ROWS; row++) {
+        // lx = posición lateral (a lo ancho de la pista)
+        // lz = posición longitudinal (a lo largo de la pista)
         const lx = (col - (COLS - 1) / 2) * SQ;
         const lz = (row - (ROWS - 1) / 2) * SQ;
         const sq = MeshBuilder.CreateGround(`sq_${col}_${row}`,
           { width: SQ, height: SQ, subdivisions: 1 }, this.scene);
-        sq.position.set(origin.x + lx * cos - lz * sin, origin.y + 0.06, origin.z + lx * sin + lz * cos);
+        // Y = origin.y + 0.02 para que quede justo sobre el asfalto sin sobresalir
+        sq.position.set(
+          origin.x + lx * cos - lz * sin,
+          origin.y + 0.02,
+          origin.z + lx * sin + lz * cos,
+        );
         sq.rotation.y = yaw0;
-        sq.material = (col + row) % 2 === 0 ? matW : matB;
+        if ((col + row) % 2 === 0) checkMatsW.push(sq);
+        else checkMatsB.push(sq);
+        checkMeshes.push(sq);
       }
     }
+    
+    // Merge para rendimiento
+    const mergedW = Mesh.MergeMeshes(checkMatsW, true, true);
+    if (mergedW) mergedW.material = matW;
+    const mergedB = Mesh.MergeMeshes(checkMatsB, true, true);
+    if (mergedB) mergedB.material = matB;
     
     // Pórtico de meta
     this.buildFinishLineGantry(origin, yaw0);

@@ -178,7 +178,6 @@ export class NetworkManager {
       playerId: this._localPlayer.id,
       x, y, z, yaw, speed,
     };
-    console.log(`[NET] Enviando state - role: ${this._role}, connections: ${this.connections.size}`);
     this.broadcast(msg);
   }
 
@@ -266,20 +265,13 @@ export class NetworkManager {
       }
 
       case "state": {
-        // DEBUG: Log para verificar que se reciben mensajes
-        console.log(`[NET] Recibido state de ${msg.playerId.substring(0, 8)} - role: ${this._role}`);
-        
         // Procesar el estado localmente
         this.cb.onState(msg);
         
         // Si soy HOST, reenviar (relay) el estado a todos los demás peers
-        // Esto permite que los guests se vean entre sí
         if (this._role === "host") {
-          console.log(`[NET] HOST reenviando state a ${this.connections.size - 1} peers`);
-          // Reenviar a todos EXCEPTO al que envió el mensaje
           for (const [peerId, peerConn] of this.connections.entries()) {
             if (peerId !== conn.peer) {
-              console.log(`[NET] Reenviando a ${peerId.substring(0, 8)}`);
               this.send(peerConn, msg);
             }
           }

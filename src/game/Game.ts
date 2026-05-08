@@ -1,13 +1,10 @@
 import {
-  Color4,
   DefaultRenderingPipeline,
   Engine,
   FreeCamera,
   HemisphericLight,
-  ParticleSystem,
   Scene,
   SSAO2RenderingPipeline,
-  Texture,
   TransformNode,
   Vector3,
 } from "@babylonjs/core";
@@ -54,7 +51,6 @@ export class Game {
   private raceFinished = false;
   private hasPassedMidpoint = false;  // evita vuelta falsa al inicio
   private camYaw = 0;
-  private smokeParticles: ParticleSystem[] = [];
   private camMode: "follow" | "top" | "left" | "right" = "follow";
   private keys = new Set<string>();
   private phase: "countdown" | "race" = "countdown";
@@ -72,6 +68,15 @@ export class Game {
   private readonly network: NetworkManager | null;
   private remoteCars: Map<string, RemoteCar> = new Map();
   private netSendAccum = 0;
+
+  // Leaderboard y tiempos
+  private raceStartTime = 0;
+  private lapStartTime  = 0;
+  private bestLapTime   = Infinity;
+  private lastLapTime   = 0;
+  private lapTimes: number[] = [];
+  // Posición de cada jugador en el spline (s 0..1) para el leaderboard
+  private remoteProgress: Map<string, { s: number; laps: number; name: string }> = new Map();
 
   // Audio
   private readonly audio: AudioManager;
@@ -95,6 +100,9 @@ export class Game {
     });
     this.scene = new Scene(this.engine);
 
+    // ── Pantalla de carga ─────────────────────────────────
+    this.showLoadingScreen(true);
+
     const light = new HemisphericLight("hemi", new Vector3(0.25, 1, 0.2), this.scene);
     const { shadows } = setupEnvironment(this.scene, light);
 
@@ -103,12 +111,20 @@ export class Game {
     this.initMinimap();
     this.initSpeedo();
 
-    const carRoot = createCarRoot(this.scene, carStyle);    this.car = new ArcadeCar(carRoot);
+    const carRoot = createCarRoot(this.scene, carStyle);
+    this.car = new ArcadeCar(carRoot);
 
-    for (const mesh of getCarMeshes(carRoot)) {
-      shadows.addShadowCaster(mesh, true);
-      mesh.receiveShadows = true;
-    }
+    // Registrar meshes del carro local en sombras cuando carguen
+    const checkLocalCar = setInterval(() => {
+      const meshes = getCarMeshes(carRoot);
+      if (meshes.length > 0) {
+        clearInterval(checkLocalCar);
+        for (const mesh of meshes) {
+          shadows.addShadowCaster(mesh, true);
+          mesh.receiveShadows = true;
+        }
+      }
+    }, 100);
 
     // Posición de salida
     const s0 = this.track.samples[0]!;
@@ -138,59 +154,51 @@ export class Game {
     this.camera.inputs.removeByType("FreeCameraMouseInput");
     this.camera.fov = 1.18;
 
-    // Post-processing OPTIMIZADO (menos lag)
-    this.scene.onAfterRenderObservable.addOnce(() => {
+    // Post-processing — diferido 3 frames para no bloquear la carga inicial
+    let ppFrames = 0;
+    const ppObserver = this.scene.onAfterRenderObservable.add(() => {
+      ppFrames++;
+      if (ppFrames < 3) return;
+      ppObserver?.remove();
+
       const pipeline = new DefaultRenderingPipeline("pp", true, this.scene, [this.camera]);
-      
-      // ── Bloom MUY SUTIL ───────────────────────────────────
       pipeline.bloomEnabled   = true;
       pipeline.bloomThreshold = 0.95;
       pipeline.bloomWeight    = 0.15;
       pipeline.bloomKernel    = 32;
       pipeline.bloomScale     = 0.3;
-      
-      // ── Tone mapping NEUTRO ───────────────────────────────
       pipeline.imageProcessingEnabled = true;
       pipeline.imageProcessing.toneMappingEnabled = true;
       pipeline.imageProcessing.toneMappingType    = 1;
       pipeline.imageProcessing.exposure           = 1.0;
       pipeline.imageProcessing.contrast           = 1.05;
-      
-      // ── Color grading DESACTIVADO ─────────────────────────
       pipeline.imageProcessing.colorCurvesEnabled = false;
-      
-      // ── Viñeta DESACTIVADA ────────────────────────────────
-      pipeline.imageProcessing.vignetteEnabled = false;
-      
-      // ── Grain DESACTIVADO ─────────────────────────────────
-      pipeline.grainEnabled = false;
-      
-      // ── Sharpen SUTIL ─────────────────────────────────────
-      pipeline.sharpenEnabled      = true;
-      pipeline.sharpen.edgeAmount  = 0.30;
-      pipeline.sharpen.colorAmount = 1.0;
-      
-      // ── Chromatic aberration DESACTIVADO ──────────────────
-      pipeline.chromaticAberrationEnabled = false;
-      
-      // ── Depth of Field DESACTIVADO ────────────────────────
-      pipeline.depthOfFieldEnabled = false;
+      pipeline.imageProcessing.vignetteEnabled    = false;
+      pipeline.grainEnabled                       = false;
+      pipeline.sharpenEnabled                     = true;
+      pipeline.sharpen.edgeAmount                 = 0.30;
+      pipeline.sharpen.colorAmount                = 1.0;
+      pipeline.chromaticAberrationEnabled         = false;
+      pipeline.depthOfFieldEnabled                = false;
 
-      // ── SSAO MUY LIGERO (optimizado) ──────────────────────
-      const ssao = new SSAO2RenderingPipeline("ssao", this.scene, {
-        ssaoRatio: 0.5, // Baja calidad para rendimiento
-        blurRatio: 0.5,
-      }, [this.camera]);
-      ssao.radius = 2.0;
-      ssao.totalStrength = 0.8; // Muy sutil
-      ssao.base = 0.15;
-      ssao.maxZ = 200;
-      ssao.minZAspect = 0.25;
-      ssao.samples = 4; // REDUCIDO para rendimiento
-      ssao.textureSamples = 1;
+      // SSAO diferido — se inicializa después del post-processing
+      setTimeout(() => {
+        const ssao = new SSAO2RenderingPipeline("ssao", this.scene, {
+          ssaoRatio: 0.5,
+          blurRatio: 0.5,
+        }, [this.camera]);
+        ssao.radius        = 2.0;
+        ssao.totalStrength = 0.8;
+        ssao.base          = 0.15;
+        ssao.maxZ          = 200;
+        ssao.minZAspect    = 0.25;
+        ssao.samples       = 4;
+        ssao.textureSamples = 1;
+      }, 500);
+
+      // Ocultar pantalla de carga cuando el primer frame con post-processing esté listo
+      this.showLoadingScreen(false);
     });
-
-    this.smokeParticles = this.createWheelSmoke();
 
     // ── Red: registrar callbacks de estado ────────────────
     if (this.network) {
@@ -259,8 +267,27 @@ export class Game {
     const root = createCarRoot(this.scene, carStyle);
     const car  = new ArcadeCar(root);
     const s0   = this.track.samples[0]!;
-    car.resetTo(new Vector3(s0.x + 4, 0.45, s0.z), 0);
-    this.remoteCars.set(id, { root, car, lastX: s0.x, lastY: 0.45, lastZ: s0.z, lastYaw: 0 });
+    // Spawn al lado de la línea de meta, separado del jugador local
+    const spawnPos = new Vector3(s0.x + 5, 0.45, s0.z);
+    car.resetTo(spawnPos, 0);
+
+    // Registrar meshes en shadow generator cuando carguen
+    // Los modelos GLTF cargan asíncrono — observar cuando aparezcan hijos
+    const checkMeshes = setInterval(() => {
+      const meshes = getCarMeshes(root);
+      if (meshes.length > 0) {
+        clearInterval(checkMeshes);
+        for (const mesh of meshes) {
+          mesh.receiveShadows = true;
+        }
+      }
+    }, 200);
+
+    this.remoteCars.set(id, {
+      root, car,
+      lastX: spawnPos.x, lastY: spawnPos.y, lastZ: spawnPos.z,
+      lastYaw: 0,
+    });
   }
 
   private despawnRemoteCar(id: string): void {
@@ -273,30 +300,44 @@ export class Game {
   }
 
   private handleRemoteState(msg: { playerId: string; x: number; y: number; z: number; yaw: number }): void {
-    console.log(`[GAME] handleRemoteState de ${msg.playerId.substring(0, 8)} en pos (${msg.x.toFixed(1)}, ${msg.z.toFixed(1)})`);
     const rc = this.remoteCars.get(msg.playerId);
-    if (!rc) {
-      console.warn(`[GAME] No se encontró remote car para ${msg.playerId.substring(0, 8)}`);
-      return;
-    }
+    if (!rc) return;
+
     rc.lastX = msg.x; rc.lastY = msg.y; rc.lastZ = msg.z; rc.lastYaw = msg.yaw;
-    // Telerransporte suave — mover directamente (interpolación futura)
-    rc.root.position.set(msg.x, msg.y, msg.z);
-    // syncRotation es privado en ArcadeCar — usamos la API pública resetTo para orientar
-    rc.car.resetTo(new Vector3(msg.x, msg.y, msg.z), msg.yaw);
-    console.log(`[GAME] Remote car actualizado a pos (${msg.x.toFixed(1)}, ${msg.z.toFixed(1)})`);
+
+    // Mover posición y sincronizar rotación visual a través del ArcadeCar
+    rc.car.teleportTo(new Vector3(msg.x, msg.y, msg.z), msg.yaw);
+
+    // Actualizar progreso para el leaderboard
+    const proj = this.track.project(new Vector3(msg.x, msg.y, msg.z));
+    const existing = this.remoteProgress.get(msg.playerId);
+    const name = this.network?.players.find(p => p.id === msg.playerId)?.name ?? "Rival";
+    this.remoteProgress.set(msg.playerId, {
+      s: proj.s,
+      laps: existing?.laps ?? 0,
+      name,
+    });
   }
 
   // ── Loop principal ────────────────────────────────────────────
 
   private readInput(): DriveInput {
     let throttle = 0, brake = 0, reverse = 0, steer = 0;
-    if (this.keys.has("KeyW") || this.keys.has("ArrowUp"))    throttle = 1;
-    if (this.keys.has("KeyS") || this.keys.has("ArrowDown"))  reverse  = 1;
-    if (this.keys.has("Space"))                                brake    = 1;
-    if (this.keys.has("KeyA") || this.keys.has("ArrowLeft"))  steer   -= 1;
-    if (this.keys.has("KeyD") || this.keys.has("ArrowRight")) steer   += 1;
-    return { throttle, brake, steer, reverse };
+    const spaceHeld = this.keys.has("Space");
+    const wHeld     = this.keys.has("KeyW") || this.keys.has("ArrowUp");
+
+    if (wHeld)                                                    throttle = 1;
+    if (this.keys.has("KeyS") || this.keys.has("ArrowDown"))      reverse  = 1;
+    if (this.keys.has("KeyA") || this.keys.has("ArrowLeft"))      steer   -= 1;
+    if (this.keys.has("KeyD") || this.keys.has("ArrowRight"))     steer   += 1;
+
+    // Launch control: espacio + W mientras el carro está parado
+    const launchControl = spaceHeld && wHeld && Math.abs(this.car.speed) < 2;
+
+    // Freno normal: espacio SIN launch control activo
+    if (spaceHeld && !launchControl) brake = 1;
+
+    return { throttle, brake, steer, reverse, launchControl };
   }
 
   private updateFrame(dt: number): void {
@@ -331,7 +372,6 @@ export class Game {
 
     const input = this.readInput();
     this.car.update(dt, input, this.track, this.track.barrierColliders);
-    this.updateWheelSmoke(input);
 
     // Actualizar audio del motor y llantas
     const absSpd = Math.abs(this.car.speed);
@@ -352,31 +392,41 @@ export class Game {
     }
 
     const proj = this.track.project(this.car.root.position);
-    const s = proj.s;
 
     if (this.lapCooldown > 0) this.lapCooldown -= dt;
 
-    // hasPassedMidpoint: se activa cuando el carro pasa por la zona media del circuito.
-    // Usamos s del spline solo para esto (no para detectar el cruce de meta).
-    if (s > 0.35 && s < 0.65) this.hasPassedMidpoint = true;
+    // hasPassedMidpoint: el carro pasó por la recta trasera (zona opuesta a la meta)
+    const carX = this.car.root.position.x;
+    const carZ = this.car.root.position.z;
+    if (carZ > 80 && carZ < 220 && carX > -450 && carX < 450) {
+      this.hasPassedMidpoint = true;
+    }
 
     const speed = this.car.speed;
 
-    // ── Detección de cruce de meta por plano ──────────────────
-    // Calculamos el signo del producto punto (carPos - metaPos) · normal.
-    // Cuando pasa de negativo a positivo el carro cruzó en dirección correcta.
-    // Esto funciona para cualquier posición lateral en la pista.
+    // ── Detección de cruce de meta por distancia directa ──────
+    // Usamos distancia al punto de meta en lugar del plano para mayor precisión.
+    // El carro cruza cuando pasa de estar "detrás" a "delante" del punto de meta,
+    // medido como el producto punto con la normal de la pista en ese punto.
     const carPos = this.car.root.position;
     const toCarX = carPos.x - this.finishLinePos.x;
     const toCarZ = carPos.z - this.finishLinePos.z;
+    // Distancia lateral al eje de la pista — solo contar si está dentro de la pista
+    const lateralDist = Math.abs(
+      toCarX * (-this.finishLineNormal.z) + toCarZ * this.finishLineNormal.x
+    );
     const dot = toCarX * this.finishLineNormal.x + toCarZ * this.finishLineNormal.z;
     const currentSide = Math.sign(dot);
+
+    // Solo contar si el carro está dentro del ancho de la pista (±halfWidth)
+    const withinTrackWidth = lateralDist < this.track.halfWidth * 1.5;
 
     const crossed = this.lapCooldown <= 0
       && speed > 2.2
       && this.prevFinishSide < 0       // venía del lado de atrás
       && currentSide > 0               // ahora está del lado de adelante
-      && this.hasPassedMidpoint;       // completó al menos medio circuito
+      && this.hasPassedMidpoint        // completó al menos medio circuito
+      && withinTrackWidth;             // está dentro del ancho de la pista
 
     this.prevFinishSide = currentSide !== 0 ? currentSide : this.prevFinishSide;
 
@@ -384,6 +434,13 @@ export class Game {
       this.completedLaps++;
       this.lapCooldown = 2.2;
       this.hasPassedMidpoint = false;
+
+      // Registrar tiempo de vuelta
+      const now = performance.now();
+      this.lastLapTime = (now - this.lapStartTime) / 1000;
+      this.lapTimes.push(this.lastLapTime);
+      if (this.lastLapTime < this.bestLapTime) this.bestLapTime = this.lastLapTime;
+      this.lapStartTime = now;
 
       if (this.completedLaps >= RACE_LAPS) {
         this.raceFinished = true;
@@ -399,6 +456,7 @@ export class Game {
     void 0 // = s;
     this.updateCameraFollow();
     this.updateHud(speed, crossed, proj.s, gear, rpmNorm);
+    this.updateLeaderboard(proj.s);
     this.updateMinimap();
   }
 
@@ -429,16 +487,61 @@ export class Game {
       this.showCountdownOverlay(false);
       void 0 // = this.track.project(this.car.root.position).s;
       // Cooldown inicial: evita contar vuelta falsa justo al arrancar.
-      this.lapCooldown = 8.0;
+      this.lapCooldown = 12.0;
       this.hasPassedMidpoint = false;
       // Arrancar motor y música
       this.audio.startEngine();
       this.audio.startRaceMusic();
+      // Iniciar timers
+      this.raceStartTime = performance.now();
+      this.lapStartTime  = performance.now();
     }
   }
 
   private showCountdownOverlay(show: boolean): void {
     document.getElementById("countdown-overlay")?.classList.toggle("hidden", !show);
+  }
+
+  private showLoadingScreen(show: boolean): void {
+    let el = document.getElementById("loading-screen");
+    if (!el && show) {
+      el = document.createElement("div");
+      el.id = "loading-screen";
+      el.style.cssText = [
+        "position:fixed", "inset:0", "z-index:9999",
+        "background:#0a0a0f",
+        "display:flex", "flex-direction:column",
+        "align-items:center", "justify-content:center",
+        "font-family:'Orbitron',monospace", "color:#fff",
+        "transition:opacity 0.4s ease",
+      ].join(";");
+      el.innerHTML = `
+        <div style="font-size:2rem;font-weight:bold;letter-spacing:0.2em;color:#e10600;margin-bottom:1rem">RACEX</div>
+        <div style="font-size:0.9rem;color:#aaa;letter-spacing:0.1em;margin-bottom:2rem">CARGANDO...</div>
+        <div style="width:220px;height:4px;background:#222;border-radius:2px;overflow:hidden">
+          <div id="loading-bar" style="height:100%;width:0%;background:#e10600;border-radius:2px;transition:width 0.3s ease;animation:loadpulse 1.2s ease-in-out infinite"></div>
+        </div>
+        <style>@keyframes loadpulse{0%,100%{opacity:1}50%{opacity:0.5}}</style>
+      `;
+      document.body.appendChild(el);
+      // Animar la barra de carga
+      let pct = 0;
+      const bar = el.querySelector("#loading-bar") as HTMLElement | null;
+      const anim = setInterval(() => {
+        pct = Math.min(95, pct + Math.random() * 12);
+        if (bar) bar.style.width = `${pct}%`;
+        if (pct >= 95) clearInterval(anim);
+      }, 200);
+      (el as HTMLElement & { _loadAnim?: ReturnType<typeof setInterval> })._loadAnim = anim;
+    }
+    if (!show && el) {
+      const bar = el.querySelector("#loading-bar") as HTMLElement | null;
+      if (bar) bar.style.width = "100%";
+      setTimeout(() => {
+        (el as HTMLElement).style.opacity = "0";
+        setTimeout(() => el?.remove(), 420);
+      }, 200);
+    }
   }
 
   private showWinner(msg: string): void {
@@ -447,8 +550,65 @@ export class Game {
     const sub = document.getElementById("finish-sub");
     const overlay = document.getElementById("finish-overlay");
     if (el) el.textContent = msg;
-    if (sub) sub.textContent = "Recarga la página para repetir";
+    if (sub) {
+      const totalSec = (performance.now() - this.raceStartTime) / 1000;
+      const best = this.bestLapTime < Infinity ? this.fmtTime(this.bestLapTime) : "--:--";
+      const lines = [
+        `Tiempo total: ${this.fmtTime(totalSec)}`,
+        `Mejor vuelta: ${best}`,
+        `Vueltas: ${this.lapTimes.map((t, i) => `V${i + 1} ${this.fmtTime(t)}`).join("  ")}`,
+        `Recarga la página para repetir`,
+      ];
+      sub.innerHTML = lines.join("<br>");
+    }
     overlay?.classList.add("visible");
+  }
+
+  private fmtTime(sec: number): string {
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    const ms = Math.floor((sec % 1) * 1000);
+    return `${m}:${String(s).padStart(2, "0")}.${String(ms).padStart(3, "0")}`;
+  }
+
+  private updateLeaderboard(localS: number): void {
+    const el = document.getElementById("hud-leaderboard");
+    if (!el) return;
+
+    // Construir lista de jugadores con su progreso
+    const localName = this.network?.localPlayer?.name ?? "Tú";
+    const localTotal = this.completedLaps + localS;
+
+    const entries: { name: string; total: number; laps: number }[] = [
+      { name: localName, total: localTotal, laps: this.completedLaps },
+    ];
+
+    for (const [, prog] of this.remoteProgress) {
+      entries.push({ name: prog.name, total: prog.laps + prog.s, laps: prog.laps });
+    }
+
+    // Ordenar por progreso total (vueltas + fracción de vuelta actual)
+    entries.sort((a, b) => b.total - a.total);
+
+    // Tiempo de carrera actual
+    const elapsed = this.phase === "race"
+      ? (performance.now() - this.raceStartTime) / 1000
+      : 0;
+
+    const lines: string[] = [];
+    if (this.phase === "race" && !this.raceFinished) {
+      lines.push(`⏱ ${this.fmtTime(elapsed)}`);
+      if (this.lastLapTime > 0) lines.push(`Última: ${this.fmtTime(this.lastLapTime)}`);
+    }
+
+    entries.forEach((e, i) => {
+      const isLocal = e.name === localName;
+      const pos = ["🥇", "🥈", "🥉"][i] ?? `${i + 1}.`;
+      const lap = `V${e.laps + 1}/${RACE_LAPS}`;
+      lines.push(`${pos} ${isLocal ? "▶ " : ""}${e.name}  ${lap}`);
+    });
+
+    el.innerHTML = lines.join("<br>");
   }
 
   private togglePause(): void {
@@ -524,13 +684,31 @@ export class Game {
     if (elHint) {
       if (this.raceFinished) {
         elHint.textContent = "";
+      } else if (this.car.launchControlActive) {
+        // Mostrar indicador de launch control con barra de RPM
+        const bars = Math.round(this.car.launchRpm * 8);
+        const bar  = "█".repeat(bars) + "░".repeat(8 - bars);
+        elHint.textContent = `🚀 LAUNCH CONTROL [${bar}]`;
+        (elHint as HTMLElement).style.color = "#ff3020";
+        (elHint as HTMLElement).style.fontWeight = "bold";
       } else if (lapTick) {
+        (elHint as HTMLElement).style.color = "";
+        (elHint as HTMLElement).style.fontWeight = "";
         elHint.textContent = "¡Vuelta registrada!";
         const lapEl = document.getElementById("hud-lap");
         lapEl?.classList.remove("lap-flash");
         void lapEl?.offsetWidth;
         lapEl?.classList.add("lap-flash");
-        window.setTimeout(() => { if (elHint) elHint.textContent = "WASD · Espacio frenar · 1-4 cámara"; }, 900);
+        window.setTimeout(() => {
+          if (elHint) {
+            elHint.textContent = "WASD · Espacio frenar · 1-4 cámara";
+            (elHint as HTMLElement).style.color = "";
+            (elHint as HTMLElement).style.fontWeight = "";
+          }
+        }, 900);
+      } else if (!this.car.launchControlActive) {
+        (elHint as HTMLElement).style.color = "";
+        (elHint as HTMLElement).style.fontWeight = "";
       }
     }
 
@@ -774,75 +952,6 @@ export class Game {
     if (elRpmWrap) (elRpmWrap as HTMLElement).style.display = "none";
   }
 
-  // ── Humo de ruedas ────────────────────────────────────────────
-
-  private createWheelSmoke(): ParticleSystem[] {
-    const offsets = [
-      new Vector3(-1.2, 0.3,  1.6),
-      new Vector3( 1.2, 0.3,  1.6),
-      new Vector3(-1.2, 0.3, -1.6),
-      new Vector3( 1.2, 0.3, -1.6),
-    ];
-    return offsets.map((offset, i) => {
-      const ps = new ParticleSystem(`smoke_${i}`, 60, this.scene);
-      ps.particleTexture = new Texture(
-        `data:image/png;base64,${this.generateSmokeTexture(64)}`, this.scene,
-      );
-      ps.emitter    = this.car.root.position.clone();
-      ps.minEmitBox = new Vector3(-0.15, 0, -0.15);
-      ps.maxEmitBox = new Vector3( 0.15, 0,  0.15);
-      ps.color1     = new Color4(0.85, 0.85, 0.85, 0.35);
-      ps.color2     = new Color4(0.70, 0.70, 0.70, 0.0);
-      ps.colorDead  = new Color4(0.5,  0.5,  0.5,  0.0);
-      ps.minSize = 0.3; ps.maxSize = 1.2;
-      ps.minLifeTime = 0.4; ps.maxLifeTime = 0.9;
-      ps.emitRate = 0;
-      ps.blendMode = ParticleSystem.BLENDMODE_STANDARD;
-      ps.direction1 = new Vector3(-0.5, 1.5, -0.5);
-      ps.direction2 = new Vector3( 0.5, 2.5,  0.5);
-      ps.minEmitPower = 0.5; ps.maxEmitPower = 1.5; ps.updateSpeed = 0.02;
-      ps.gravity = new Vector3(0, -0.5, 0);
-      ps.minAngularSpeed = -1.0; ps.maxAngularSpeed = 1.0;
-      ps.start();
-      (ps as ParticleSystem & { _wheelOffset: Vector3 })._wheelOffset = offset;
-      return ps;
-    });
-  }
-
-  private generateSmokeTexture(size: number): string {
-    const canvas = document.createElement("canvas");
-    canvas.width = canvas.height = size;
-    const ctx = canvas.getContext("2d")!;
-    const cx = size / 2, r = size / 2;
-    const grad = ctx.createRadialGradient(cx, cx, 0, cx, cx, r);
-    grad.addColorStop(0,   "rgba(255,255,255,0.9)");
-    grad.addColorStop(0.4, "rgba(255,255,255,0.5)");
-    grad.addColorStop(1,   "rgba(255,255,255,0)");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, size, size);
-    return canvas.toDataURL().split(",")[1]!;
-  }
-
-  private updateWheelSmoke(input: { brake: number; steer: number; reverse: number }): void {
-    const absSpeed  = Math.abs(this.car.speed);
-    const braking   = input.brake   > 0.5 && absSpeed > 15;
-    const skidding  = Math.abs(input.steer) > 0.7 && absSpeed > 20;
-    const reversing = input.reverse > 0.5 && absSpeed > 8;
-    const emitting  = braking || skidding || reversing;
-
-    const carPos = this.car.root.position;
-    const carYaw = this.car.yaw + Math.PI;
-    const cosY = Math.cos(carYaw), sinY = Math.sin(carYaw);
-
-    for (const ps of this.smokeParticles) {
-      const offset = (ps as ParticleSystem & { _wheelOffset: Vector3 })._wheelOffset;
-      const wx = offset.x * cosY - offset.z * sinY;
-      const wz = offset.x * sinY + offset.z * cosY;
-      (ps.emitter as Vector3).set(carPos.x + wx, carPos.y + offset.y, carPos.z + wz);
-      ps.emitRate = emitting ? (braking ? 35 : 20) : 0;
-    }
-  }
-
   // ── Minimapa ──────────────────────────────────────────────────
 
   private initMinimap(): void {
@@ -870,8 +979,10 @@ export class Game {
     const scale  = (SIZE - PAD * 2) / Math.max(rangeX, rangeZ);
     this.minimapScale = scale;
     // Centrar en el canvas
+    // Nota: invertimos Z para que el norte del mundo quede arriba en el minimapa
+    // (en canvas 2D el eje Y crece hacia abajo, en BabylonJS Z crece hacia el norte)
     this.minimapOffX = PAD + ((SIZE - PAD * 2) - rangeX * scale) / 2 - minX * scale;
-    this.minimapOffZ = PAD + ((SIZE - PAD * 2) - rangeZ * scale) / 2 - minZ * scale;
+    this.minimapOffZ = PAD + ((SIZE - PAD * 2) - rangeZ * scale) / 2 + maxZ * scale;
 
     // Dibujar la pista (línea de fondo) — se guarda como ImageData para no redibujar cada frame
     ctx.clearRect(0, 0, SIZE, SIZE);
@@ -885,7 +996,7 @@ export class Game {
     for (let i = 0; i < samples.length; i++) {
       const s = samples[i]!;
       const x = s.x * scale + this.minimapOffX;
-      const z = s.z * scale + this.minimapOffZ;
+      const z = -s.z * scale + this.minimapOffZ;
       if (i === 0) ctx.moveTo(x, z); else ctx.lineTo(x, z);
     }
     ctx.closePath();
@@ -898,7 +1009,7 @@ export class Game {
     for (let i = 0; i < samples.length; i++) {
       const s = samples[i]!;
       const x = s.x * scale + this.minimapOffX;
-      const z = s.z * scale + this.minimapOffZ;
+      const z = -s.z * scale + this.minimapOffZ;
       if (i === 0) ctx.moveTo(x, z); else ctx.lineTo(x, z);
     }
     ctx.closePath();
@@ -908,8 +1019,8 @@ export class Game {
     const s0 = samples[0]!;
     const s1 = samples[1]!;
     const mx = s0.x * scale + this.minimapOffX;
-    const mz = s0.z * scale + this.minimapOffZ;
-    const tx = (s1.x - s0.x), tz = (s1.z - s0.z);
+    const mz = -s0.z * scale + this.minimapOffZ;
+    const tx = (s1.x - s0.x), tz = -(s1.z - s0.z);
     const len = Math.hypot(tx, tz);
     const nx = -tz / len * 5, nz = tx / len * 5;
     ctx.strokeStyle = "#e10600";
@@ -934,7 +1045,7 @@ export class Game {
     // Posición del coche local
     const pos = this.car.root.position;
     const cx  = pos.x * this.minimapScale + this.minimapOffX;
-    const cz  = pos.z * this.minimapScale + this.minimapOffZ;
+    const cz  = -pos.z * this.minimapScale + this.minimapOffZ;
 
     // Punto del coche — círculo con borde
     ctx.beginPath();
@@ -949,7 +1060,7 @@ export class Game {
     for (const [, rc] of this.remoteCars) {
       const rp = rc.root.position;
       const rx = rp.x * this.minimapScale + this.minimapOffX;
-      const rz = rp.z * this.minimapScale + this.minimapOffZ;
+      const rz = -rp.z * this.minimapScale + this.minimapOffZ;
       if (rx < 0 || rx > SIZE || rz < 0 || rz > SIZE) continue;
       ctx.beginPath();
       ctx.arc(rx, rz, 4, 0, Math.PI * 2);
@@ -962,7 +1073,6 @@ export class Game {
   }
 
   dispose(): void {
-    for (const ps of this.smokeParticles) ps.dispose();
     this.audio.dispose();
     this.network?.disconnect();
     this.scene.dispose();
