@@ -411,68 +411,6 @@ export class RaceTrack {
     if (mergedW) mergedW.material = matW;
     const mergedB = Mesh.MergeMeshes(checkMatsB, true, true);
     if (mergedB) mergedB.material = matB;
-    
-    // Pórtico de meta
-    this.buildFinishLineGantry(origin, yaw0);
-  }
-  
-  /** Crea pórtico/arco estructural sobre la línea de meta */
-  private buildFinishLineGantry(origin: Vector3, yaw: number): void {
-    const matStruct = new PBRMaterial("gantryMat", this.scene);
-    matStruct.albedoColor = new Color3(0.85, 0.10, 0.05);
-    matStruct.metallic = 0.7;
-    matStruct.roughness = 0.3;
-    
-    const cos = Math.cos(yaw), sin = Math.sin(yaw);
-    const side = new Vector3(-sin, 0, cos);
-    
-    const colHeight = 7;
-    const colWidth = 0.4;
-    const colDepth = 0.4;
-    const colSpacing = this.halfWidth + 2;
-    
-    const leftCol = MeshBuilder.CreateBox("gantryColL", 
-      { width: colWidth, height: colHeight, depth: colDepth }, this.scene);
-    leftCol.position.copyFrom(origin.add(side.scale(-colSpacing)).add(new Vector3(0, colHeight / 2, 0)));
-    leftCol.rotation.y = yaw;
-    leftCol.material = matStruct;
-    leftCol.receiveShadows = true;
-    
-    const rightCol = MeshBuilder.CreateBox("gantryColR", 
-      { width: colWidth, height: colHeight, depth: colDepth }, this.scene);
-    rightCol.position.copyFrom(origin.add(side.scale(colSpacing)).add(new Vector3(0, colHeight / 2, 0)));
-    rightCol.rotation.y = yaw;
-    rightCol.material = matStruct;
-    rightCol.receiveShadows = true;
-    
-    const beamWidth = colSpacing * 2 + 1;
-    const beamHeight = 0.5;
-    const beamDepth = 0.5;
-    
-    const beam = MeshBuilder.CreateBox("gantryBeam", 
-      { width: beamWidth, height: beamHeight, depth: beamDepth }, this.scene);
-    beam.position.copyFrom(origin.add(new Vector3(0, colHeight - beamHeight / 2, 0)));
-    beam.rotation.y = yaw;
-    beam.material = matStruct;
-    beam.receiveShadows = true;
-    
-    const matFlag = new StandardMaterial("flagMat", this.scene);
-    matFlag.diffuseColor = new Color3(1, 1, 1);
-    matFlag.emissiveColor = new Color3(0.15, 0.15, 0.15);
-    
-    for (let i = -3; i <= 3; i++) {
-      const flag = MeshBuilder.CreateCylinder(`flag_${i}`, 
-        { height: 1.2, diameterTop: 0, diameterBottom: 0.6, tessellation: 3 }, this.scene);
-      const flagX = i * 4;
-      flag.position.copyFrom(
-        origin
-          .add(side.scale(flagX))
-          .add(new Vector3(0, colHeight - 1.5, 0))
-      );
-      flag.rotation.y = yaw;
-      flag.rotation.z = Math.PI;
-      flag.material = i % 2 === 0 ? matFlag : matStruct;
-    }
   }
 
   getFrameAt(i: number): { center: Vector3; tangent: Vector3; side: Vector3 } {

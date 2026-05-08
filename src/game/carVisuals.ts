@@ -7,12 +7,14 @@ import {
 } from "@babylonjs/core";
 import "@babylonjs/loaders/glTF";
 
-export type CarStyleId = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+export type CarStyleId = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export interface CarDef {
   id: CarStyleId;
   name: string;
   folder: string;
+  /** Nombre del archivo del modelo. Por defecto "scene.gltf". */
+  file?: string;
   scale: number;
   /** Rotación de corrección de orientación del modelo (aplicada en pivot, NO en rootMesh).
    *  El pivot es hijo del root pero NO hereda la rotación Y dinámica del root.
@@ -69,6 +71,12 @@ export const CAR_DEFS: CarDef[] = [
     scale: 0.379,  rotX: 0,       rotZ: 0, rotY: 0,
     color: "#1a3a1a", accent: "#44cc44",
   },
+  {
+    // Toyota GR86 Pandem: GLB, frente típicamente en -Z. rotY=0.
+    id: 6, name: "Toyota GR86 Pandem",  folder: "car8", file: "scene.glb",
+    scale: 130.0,    rotX: 0,       rotZ: 0, rotY: 0,
+    color: "#ffffff", accent: "#cccccc",
+  },
 ];
 
 /**
@@ -96,7 +104,7 @@ export function createCarRoot(scene: Scene, styleId: CarStyleId): TransformNode 
   SceneLoader.ImportMesh(
     "",
     `/assets/${def.folder}/`,
-    "scene.gltf",
+    def.file ?? "scene.gltf",
     scene,
     (meshes) => {
       if (!meshes.length) return;

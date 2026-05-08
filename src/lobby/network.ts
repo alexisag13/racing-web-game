@@ -15,7 +15,7 @@
 
 import Peer, { type DataConnection } from "peerjs";
 
-export type CarStyleId = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+export type CarStyleId = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export interface PlayerInfo {
   id: string;       // PeerJS peer ID
