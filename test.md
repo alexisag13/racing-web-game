@@ -13,9 +13,9 @@
 | Métrica | Valor |
 |---|---|
 | Total de casos de prueba | 16 |
-| ✅ Pasaron | 13 |
+| ✅ Pasaron | 14 |
 | ❌ Fallaron | 2 |
-| ⚠️ Bloqueados | 1 |
+| ⚠️ Bloqueados | 0 |
 | Cobertura de flujos críticos | 100% |
 
 ---
@@ -125,7 +125,7 @@ Las pruebas se realizaron con **tres dispositivos móviles nuevos** que no habí
 | ID | Caso de Prueba | Pasos | Resultado Esperado | Resultado Obtenido | Estado |
 |---|---|---|---|---|---|
 | 8.1 | Recuperar contraseña con correo registrado | 1. Ir a "¿Olvidaste tu contraseña?". 2. Ingresar correo registrado. 3. Ingresar nueva contraseña. 4. Confirmar y enviar | Contraseña restablecida, redirección a Login | Proceso completado correctamente | ✅ |
-| 8.2 | Recuperar contraseña con correo no registrado | 1. Ingresar correo que no existe. 2. Presionar "Restablecer" | Mensaje de cuenta no encontrada | Mensaje de error mostrado correctamente | ⚠️ |
+| 8.2 | Recuperar contraseña con correo no registrado | 1. Ingresar correo que no existe. 2. Presionar "Restablecer" | Mensaje de cuenta no encontrada | Mensaje de error mostrado correctamente | ✅ |
 
 ---
 
@@ -141,7 +141,7 @@ Las pruebas se realizaron con **tres dispositivos móviles nuevos** que no habí
 | Alerta de azúcar | ✅ Correcto |
 | Historial | ✅ Correcto |
 | Navegación | ✅ Correcto |
-| Recuperación de contraseña | ⚠️ Parcial |
+| Recuperación de contraseña | ✅ Correcto |
 | Escaneo sin internet | ❌ Mejorar |
 
 ---
