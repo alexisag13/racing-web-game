@@ -1,4 +1,4 @@
-# 📋 Reporte de Pruebas QA — NutriVision AI
+[# 📋 Reporte de Pruebas QA — NutriVision AI
 
 **Rama:** `feature-qa`
 **Sprint:** 4
@@ -8,7 +8,7 @@
 
 ---
 
-## 1. Resumen Ejecutivo
+## 1. Resumen Ejecutivoa
 
 | Métrica | Valor |
 |---|---|
@@ -194,3 +194,4 @@ Las áreas de mejora son el manejo de errores de red, la accesibilidad en tiempo
 ---
 
 *Reporte generado por el rol QA/Tester — Sprint 4 — NutriVision AI*
+](https://github.com/alexisag13/racing-web-game/blob/main/test.md)
